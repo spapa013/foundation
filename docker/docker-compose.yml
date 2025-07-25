@@ -8,9 +8,8 @@ services:
     volumes:
       - ..:/workspace/foundation
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/scratch09/:/mnt/scratch09/
+      - /mnt/:/mnt/
       - /mnt/scratch09/scratch09/foundation/external/:/external
-      - /mnt/dj-stor01/:/mnt/dj-stor01/
     entrypoint:
       [
         "/bin/bash", "-c",
