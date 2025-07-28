@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
+      - '**'
     paths:
       - 'docker/Dockerfile'
       - '.github/workflows/docker-build-push.yml'
@@ -30,10 +30,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set tag(s) based on branch
+        id: vars
+        run: |
+          BRANCH=$(echo "${GITHUB_REF#refs/heads/}")
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          if [ "$BRANCH" = "main" ]; then
+            echo "tags=ghcr.io/${{ github.repository_owner }}/foundation:latest" >> $GITHUB_OUTPUT
+          else
+            echo "tags=ghcr.io/${{ github.repository_owner }}/foundation:$BRANCH" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./docker
           file: ./docker/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/foundation:latest
+          tags: ${{ steps.vars.outputs.tags }}
