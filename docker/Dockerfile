@@ -36,7 +36,6 @@ RUN apt-get update \
     && rm -rf /tmp/aws /tmp/awscliv2.zip \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Install Miniconda
 RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
       -o /tmp/miniconda.sh && \
@@ -45,8 +44,10 @@ RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64
 
 ENV PATH=/opt/conda/bin:$PATH
 
-# Configure conda-forge-only and install mamba
-RUN conda config --remove channels defaults && \
+# Configure conda to avoid Anaconda ToS prompts and install mamba
+RUN conda config --remove channels defaults || true && \
+    conda config --remove channels https://repo.anaconda.com/pkgs/main || true && \
+    conda config --remove channels https://repo.anaconda.com/pkgs/r || true && \
     conda config --add channels conda-forge && \
     conda config --set channel_priority strict && \
     conda install -y -n base mamba && \
