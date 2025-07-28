@@ -26,6 +26,8 @@ services:
       ]
     working_dir: /workspace/foundation/demos
     ipc: host
+    container_name: foundation
   foundation-cpu:
     extends: foundation
     runtime: runc
+    container_name: foundation-cpu
