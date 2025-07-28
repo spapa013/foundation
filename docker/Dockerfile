@@ -44,13 +44,10 @@ RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64
 
 ENV PATH=/opt/conda/bin:$PATH
 
-# Configure conda to avoid Anaconda ToS prompts and install mamba
-RUN conda config --remove channels defaults || true && \
-    conda config --remove channels https://repo.anaconda.com/pkgs/main || true && \
-    conda config --remove channels https://repo.anaconda.com/pkgs/r || true && \
-    conda config --add channels conda-forge && \
+# Install mamba from conda-forge only, bypassing Anaconda ToS
+RUN conda config --add channels conda-forge && \
     conda config --set channel_priority strict && \
-    conda install -y -n base mamba && \
+    conda install --override-channels -c conda-forge -y -n base mamba && \
     conda clean -ya
 
 # Install scientific Python packages
