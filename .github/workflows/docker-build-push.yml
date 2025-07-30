@@ -51,7 +51,7 @@ jobs:
       
       - name: Check disk usage after cleanup
         run: df -h
-        
+
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -59,3 +59,5 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           tags: ${{ steps.vars.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
