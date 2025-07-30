@@ -76,8 +76,13 @@ RUN mamba create -y -n ${ENV_NAME} -c conda-forge \
       tqdm=4.65.0 \
       av=10.0.0 \
       datajoint=0.12.9 && \
-    conda clean -ya
-
+    conda clean --all --yes && \
+    find /opt/conda -name '__pycache__' -type d -exec rm -rf {} + && \
+    find /opt/conda -name '*.a' -delete && \
+    find /opt/conda -name '*.pyc' -delete && \
+    find /opt/conda -name '*.pyo' -delete && \
+    strip --strip-unneeded /opt/conda/envs/${ENV_NAME}/lib/*.so || true
+    
 # Install PyTorch + CUDA
 RUN conda run -n ${ENV_NAME} pip install --no-cache-dir \
       torch==2.0.0+cu118 torchvision==0.15.1+cu118 torchaudio==2.0.1 \
