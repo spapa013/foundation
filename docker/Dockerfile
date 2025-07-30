@@ -53,6 +53,7 @@ RUN conda config --add channels conda-forge && \
 # Install scientific Python packages
 RUN mamba create -y -n ${ENV_NAME} -c conda-forge \
       python=${PYTHON_VERSION} \
+      libstdcxx-ng>=11.2.0 \
       jupyterlab=3.6.3 \
       numpy=1.23.5 \
       pandas=2.0.0 \
@@ -62,7 +63,7 @@ RUN mamba create -y -n ${ENV_NAME} -c conda-forge \
       scikit-image=0.20.0 \
       pynndescent=0.5.8 \
       numdifftools=0.9.41 \
-      lmfit=1.2.0 \      
+      lmfit=1.2.0 \
       statsmodels=0.13.5 \
       networkx=3.1 \
       gitpython=3.1.31 \
