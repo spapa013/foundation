@@ -129,7 +129,7 @@ def get_readout_weights_and_location(network_id, instance_id, data_id):
     ))
 
     # create data df
-    unit_df = unit_df[['animal_id', 'session', 'scan_idx', 'unit_id']].copy()
+    unit_df = unit_df[['session', 'scan_idx', 'unit_id']].copy()
     meta_df = make_metadata_df(**model_key)
     return weights_array, location_array, unit_df, meta_df
 
@@ -209,7 +209,7 @@ def get_model_performance(network_id, instance_id, data_id, trial_filterset_id, 
         .merge(cc_max, how="left", validate="one_to_one")
         .assign(cc_norm=lambda df: df.cc_abs / df.cc_max)
     )
-    unit_df = merge_df[['animal_id', 'session', 'scan_idx', 'unit_id', 'cc_abs', 'cc_max', 'cc_norm']].copy()
+    unit_df = merge_df[['session', 'scan_idx', 'unit_id', 'cc_abs', 'cc_max', 'cc_norm']].copy()
     meta_df = make_metadata_df(**data_key)
     return unit_df, meta_df
 
@@ -317,7 +317,7 @@ def get_orientation_direction_tuning(network_id, instance_id, data_id, videoset_
             "global_dsi": "gDSI",
     })
     data_col = ['OSI', 'DSI', 'gOSI', 'gDSI', 'pref_ori', 'pref_dir']
-    unit_df = unit_ori[['animal_id', 'session', 'scan_idx', 'unit_id', *data_col]].copy()
+    unit_df = unit_ori[['session', 'scan_idx', 'unit_id', *data_col]].copy()
     meta_df = make_metadata_df(**model_key, **tuning_key)
     return unit_df, meta_df
 
@@ -426,7 +426,7 @@ def compute_model_responses(network_id, instance_id, data_id, videoset_id, test=
         * recording.ScanUnits
         * recording.ScanUnitOrder
         & key
-    ).fetch('animal_id', 'session', 'scan_idx', 'unit_id', order_by="trace_order ASC", as_dict=True)
+    ).fetch('session', 'scan_idx', 'unit_id', order_by="trace_order ASC", as_dict=True)
     unit_df = pd.DataFrame(unit_rel)
     meta_df = make_metadata_df(**key, burnin_frames=burnin_frames).merge(stim_meta_df)
     return resp_array, stim_array, unit_df, meta_df
