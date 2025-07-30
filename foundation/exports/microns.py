@@ -144,7 +144,7 @@ def export(target_dir=None):
         rmtree(mdir)
 
 
-def export_properties(target_dir=None, readout=False, performance=False, ori_dir_tuning=False, responses=False):
+def export_properties(target_dir=None, readout=False, performance=False, ori_dir_tuning=False, responses=False, responses_test=False):
     """
     Export properties of the model including readout weights, performance metrics,
     orientation and direction tuning, and model responses.
@@ -253,7 +253,7 @@ def export_properties(target_dir=None, readout=False, performance=False, ori_dir
             resp_array, stim_array, unit_df, meta_df = utils.compute_model_responses(
                 **model_key,
                 videoset_id=RESPONSES_VIDEOSET_ID,
-                test=False
+                test=responses_test
             )
             resp_arrays.append(resp_array)
             unit_dfs.append(unit_df)
