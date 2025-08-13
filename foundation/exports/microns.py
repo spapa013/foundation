@@ -1,16 +1,11 @@
 import os
 import torch
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from shutil import make_archive, rmtree
-from datajoint import AndList
 from collections import OrderedDict
-from pathlib import Path
-from itertools import repeat
-from foundation.exports import utils
+from foundation.exports import export as exp, utils
 import logging
-from djutils import cache_rowproperty
 
 logger = logging.getLogger(__name__)
 
@@ -160,213 +155,49 @@ def export_properties(target_dir=None, readout=False, performance=False, ori_dir
             If True, exports orientation and direction tuning data.
         responses : bool
             If True, exports stimulus videos and model responses.
+        responses_test=False : bool
+            If True, exports dummy data for model responses.
     Returns :
         None
     """
-    target_dir = Path(target_dir) if target_dir is not None else Path()
-    mdir = target_dir / "properties"
-    mdir.mkdir(exist_ok=True)
-    logger.info(f"Destination directory: {mdir}.")
+    target_dir = utils.prepare_target_directory(target_dir)
 
     if readout:
-        logger.info(f"Exporting readout data...")
-        readout_dir = mdir / "readout"
-        readout_dir.mkdir(exist_ok=True)
-        weights_arrays, location_arrays, unit_dfs, meta_dfs = [], [], [], []
-        # Iterate over scans and collect readout weights and locations
-        for net_id, inst_id, data_id in tqdm(zip(repeat(NETWORK_ID), repeat(INSTANCE_ID), DATA_IDS), total=len(DATA_IDS), desc="Scans"):
-            model_key = {'network_id': net_id, 'instance_id': inst_id, 'data_id': data_id}
-            weight_array, location_array, unit_df, meta_df = utils.get_readout_weights_and_location(**model_key)
-            weights_arrays.append(weight_array)
-            location_arrays.append(location_array)
-            unit_dfs.append(unit_df)
-            meta_dfs.append(meta_df)
-        # Concatenate arrays and dataframes across scans
-        weights_array = np.concatenate(weights_arrays)  # units x (stream x features)
-        location_array = np.concatenate(location_arrays)  # units x (X position, Y position)
-        scan_unit_df = pd.concat(unit_dfs, ignore_index=True)
-        scan_meta_df = pd.concat(meta_dfs, ignore_index=True)
-        # SAVE DATA
-        logger.info(f"Saving readout weights and locations to {readout_dir}...")
-        np.save(readout_dir / "readout_weights.npy", weights_array)
-        np.save(readout_dir / "readout_locations.npy", location_array)
-        scan_unit_df.to_csv(readout_dir / "units.csv", index=False)
-        scan_meta_df.to_csv(readout_dir / "metadata.csv", index=False)
-
+        exp.export_readout_weights_and_locations(
+            data_ids=DATA_IDS,
+            network_id=NETWORK_ID,
+            instance_id=INSTANCE_ID,
+            target_dir=target_dir / "readout",
+        )
     if performance:
-        logger.info(f"Exporting performance metrics...")
-        performance_dir = mdir / "performance"
-        performance_dir.mkdir(exist_ok=True)
-        unit_dfs, meta_dfs = [], []
-        # Iterate over scans and collect performance metrics
-        for net_id, inst_id, data_id in tqdm(zip(repeat(NETWORK_ID), repeat(INSTANCE_ID), DATA_IDS), total=len(DATA_IDS), desc="Scans"):
-            model_key = {'network_id': net_id, 'instance_id': inst_id, 'data_id': data_id}
-            unit_df, meta_df = utils.get_model_performance(
-                **model_key,
-                trial_filterset_id=PERFORMANCE_TRIAL_FILTERSET_ID,
-                videoset_id=PERFORMANCE_VIDEOSET_ID,
-                perspective=PERFORMANCE_PERSPECTIVE,
-                modulation=PERFORMANCE_MODULATION,
-                burnin_frames=PERFORMANCE_BURNIN_FRAMES
-            )
-            unit_dfs.append(unit_df)
-            meta_dfs.append(meta_df)
-        # Concatenate dataframes across scans
-        scan_unit_df = pd.concat(unit_dfs, ignore_index=True)
-        scan_meta_df = pd.concat(meta_dfs, ignore_index=True)
-        # SAVE DATA
-        logger.info(f"Saving model performance data to {performance_dir}...")
-        scan_unit_df.to_csv(performance_dir / "units.csv", index=False)
-        scan_meta_df.to_csv(performance_dir / "metadata.csv", index=False)
-
+        exp.export_performance_metrics(
+            data_ids=DATA_IDS,
+            network_id=NETWORK_ID,
+            instance_id=INSTANCE_ID,
+            trial_filterset_id=PERFORMANCE_TRIAL_FILTERSET_ID,
+            videoset_id=PERFORMANCE_VIDEOSET_ID,
+            perspective=PERFORMANCE_PERSPECTIVE,
+            modulation=PERFORMANCE_MODULATION,
+            burnin_frames=PERFORMANCE_BURNIN_FRAMES,
+            target_dir=target_dir / "perfomance",
+        )
     if ori_dir_tuning: 
-        logger.info(f"Exporting orientation and direction tuning data...")
-        oridir_dir = mdir / "ori_dir_tuning"
-        oridir_dir.mkdir(exist_ok=True)
-        unit_dfs, meta_dfs = [], []
-        # Iterate over scans and collect orientation and direction tuning data
-        for net_id, inst_id, data_id in tqdm(zip(repeat(ORIDIR_NETWORK_ID), repeat(ORIDIR_INSTANCE_ID), ORIDIR_DATA_IDS), total=len(ORIDIR_DATA_IDS), desc="Scans"):
-            model_key = {'network_id': net_id, 'instance_id': inst_id, 'data_id': data_id}
-            unit_df, meta_df = utils.get_orientation_direction_tuning(
-                **model_key,
-                videoset_id=ORIDIR_VIDEOSET_ID,
-                offset_id=ORIDIR_OFFSET_ID,
-                impulse_id=ORIDIR_IMPULSE_ID,
-                precision_id=ORIDIR_PRECISION_ID,
-            )
-            unit_dfs.append(unit_df)
-            meta_dfs.append(meta_df)
-        # Concatenate dataframes across scans
-        scan_unit_df = pd.concat(unit_dfs, ignore_index=True)
-        scan_meta_df = pd.concat(meta_dfs, ignore_index=True)
-        # SAVE DATA
-        logger.info(f"Saving orientation and direction tuning data to {oridir_dir}...")
-        scan_unit_df.to_csv(oridir_dir / "units.csv", index=False)
-        scan_meta_df.to_csv(oridir_dir / "metadata.csv", index=False)
-
+        exp.export_orientation_direction_tuning(
+            data_ids=ORIDIR_DATA_IDS,
+            network_id=ORIDIR_NETWORK_ID,
+            instance_id=ORIDIR_INSTANCE_ID,
+            videoset_id=ORIDIR_VIDEOSET_ID,
+            offset_id=ORIDIR_OFFSET_ID,
+            impulse_id=ORIDIR_IMPULSE_ID,
+            precision_id=ORIDIR_PRECISION_ID,
+            target_dir=target_dir / "ori_dir_tuning",
+        )
     if responses:
-        logger.info(f"Exporting stimulus videos and model responses...")
-        resp_dir = mdir / "responses"
-        resp_dir.mkdir(exist_ok=True)
-        resp_arrays, unit_dfs, meta_dfs = [], [], []
-        for net_id, inst_id, data_id in tqdm(zip(repeat(NETWORK_ID), repeat(INSTANCE_ID), DATA_IDS), total=len(DATA_IDS), desc="Scans"):
-            model_key = {'network_id': net_id, 'instance_id': inst_id, 'data_id': data_id}
-            resp_array, stim_array, unit_df, meta_df = utils.compute_model_responses(
-                **model_key,
-                videoset_id=RESPONSES_VIDEOSET_ID,
-                test=responses_test
-            )
-            resp_arrays.append(resp_array)
-            unit_dfs.append(unit_df)
-            meta_dfs.append(meta_df)
-        
-        logger.info(f"Saving stimulus videos and model responses to {resp_dir}...")
-        # Concatenate across scans
-        scan_resp_array = np.concatenate(resp_arrays) # units x frames
-        scan_unit_df = pd.concat(unit_dfs, ignore_index=True)
-        scan_meta_df = pd.concat(meta_dfs, ignore_index=True)
-        # SAVE DATA
-        np.save(resp_dir / "responses.npy", scan_resp_array)
-        scan_unit_df.to_csv(resp_dir / "units.csv", index=False)
-        scan_meta_df.to_csv(resp_dir / "metadata.csv", index=False)
-        np.save(resp_dir / "stimulus.npy", stim_array)  # Save the last stimulus array (they are identical across scans)
-
-
-def export_training_data(data_id, target_dir=None):
-    """
-    Export the training dataset and metadata for a given data_id.
-    
-    Parameters:
-        data_id (str): ID of the data used for the model.
-        target_dir (os.PathLike | None): Directory to save the exported data. If None, uses the current working directory.
-    
-    Returns:
-        tuple: (dataset_df, meta_df) where dataset_df is a DataFrame with the training dataset paths
-               and meta_df is a DataFrame with metadata.
-    """
-    target_dir = Path(target_dir) if target_dir is not None else Path()
-    logger.info(f"Loading training data...")
-    dataset_df, meta_df = utils.get_training_dataset(data_id)
-    
-    logger.info(f"Making destination directory...")
-    dir_name = f'{meta_df["animal_id"].values.item()}_{meta_df["session"].values.item()}_{meta_df["scan_idx"].values.item()}'
-    dst_dir = target_dir / dir_name
-    dst_dir.mkdir(exist_ok=True, parents=True)
-
-    logger.info(f"Exporting training data to {dst_dir}...")
-    for col in dataset_df:
-        col_dir = dst_dir / col
-        col_dir.mkdir(exist_ok=True)
-        for i, value in tqdm(enumerate(dataset_df[col]), desc=col, total=len(dataset_df)):
-            fp = col_dir / f'trial{i}.npy'
-            if hasattr(value, 'fp'):
-                np.save(fp, np.load(value.fp))
-            else:
-                np.save(fp, value)
-    
-    logger.info(f"Saving metadata to {dst_dir / 'metadata.csv'}...")
-    meta_df.to_csv(dst_dir / "metadata.csv", index=False)
-
-
-def export_visual_trial_data(data_id, network_id, instance_id, trial_filterset_id, videoset_id, target_dir=None):
-    target_dir = Path(target_dir) if target_dir is not None else Path()
-    logger.info(f"Loading training data...")
-
-    data, trial_df, meta_df = utils.get_visual_trial_data(
-        data_id=data_id, 
-        network_id=network_id, 
-        instance_id=instance_id, 
-        trial_filterset_id=trial_filterset_id, 
-        videoset_id=videoset_id
-    )
-    logger.info(f"Making destination directory...")
-    dir_name = f'{meta_df["animal_id"].values.item()}_{meta_df["session"].values.item()}_{meta_df["scan_idx"].values.item()}'
-    dst_dir = target_dir / dir_name
-    dst_dir.mkdir(exist_ok=True, parents=True)  
-
-    logger.info(f"Exporting visual trial data to {dst_dir}...")
-    data_type_names = ['stimuli', 'units', 'modulations', 'perspectives']
-    base_dirs = {dtn: dst_dir / dtn for dtn in data_type_names}
-    for bd in base_dirs.values():
-        bd.mkdir(exist_ok=True)
-
-    with cache_rowproperty():
-        for i, (_, vdf) in enumerate(tqdm(trial_df.groupby("video_id"), desc="Videos")):
-            # trial ids
-            trial_ids = list(vdf.trial_id)
-
-            # trial stimuli
-            stimuli = list(data.trial_stimuli(trial_ids))
-            
-            # all of the stimuli should be the same
-            assert all(np.array_equal(s, stimuli[0]) for s in stimuli), (
-                "All trials should have the same stimulus"
-            )
-            
-            # trial units
-            units = list(data.trial_units(trial_ids))
-
-            # trial perspectives
-            perspectives = list(data.trial_perspectives(trial_ids))
-
-            # trial modulations
-            modulations = list(data.trial_modulations(trial_ids))
-
-            assert len(stimuli) == len(trial_ids) == len(units) == len(perspectives) == len(modulations)
-            
-            # save data
-            vid_name = f'video{i}'
-            
-            ## create video directory for each data type
-            vid_dirs = {data_type_names: base_dir / vid_name for data_type_names, base_dir in base_dirs.items()}
-            for vid_dir in vid_dirs.values():
-                vid_dir.mkdir(exist_ok=True)        
-            
-            data_to_save = {dtn: data for dtn, data in zip(data_type_names, [stimuli, units, perspectives, modulations])}
-            for data_type_name, data_type in data_to_save.items():
-                for j, trial_data in enumerate(data_type):
-                    trial_name = f'trial{j}.npy'
-                    np.save(vid_dirs[data_type_name] / trial_name, trial_data)
-    
-    logger.info(f"Saving metadata to {dst_dir / 'metadata.csv'}...")
-    meta_df.to_csv(dst_dir / "metadata.csv", index=False)
+        exp.export_stimulus_and_model_responses(
+            data_ids=DATA_IDS,
+            network_id=NETWORK_ID,
+            instance_id=INSTANCE_ID,
+            videoset_id=RESPONSES_VIDEOSET_ID,
+            test=responses_test,
+            target_dir=target_dir / "responses",
+        )
