@@ -10,8 +10,10 @@ from foundation.virtual.bridge import pipe_fuse
 from foundation.tuning.compute.direction import bi_von_mises, uniform
 from foundation.fnn.model import Model
 from foundation.utility.resize import Resize
+from foundation.fnn import data
 from foundation.fnn.data import Data
 from foundation.stimulus.video import VideoSet, Video
+from foundation.recording.compute.visual import VisualTrialSet
 from foundation.utils.logging import tqdm, disable_tqdm
 from fnn.model.utils import isotropic_grid_sample_2d
 from djutils import merge
@@ -45,6 +47,7 @@ def make_metadata_df(data_id, network_id=None, instance_id=None, **kwargs):
     for k, v in kwargs.items():
         meta_df[k] = v
     return meta_df
+
 
 def get_readout_weights_and_location(network_id, instance_id, data_id):
     """
@@ -321,6 +324,7 @@ def get_orientation_direction_tuning(network_id, instance_id, data_id, videoset_
     meta_df = make_metadata_df(**model_key, **tuning_key)
     return unit_df, meta_df
 
+
 def get_stimulus_videos(data_id, videoset_id):
     """
     Get stimulus videos for a given model.
@@ -430,3 +434,49 @@ def compute_model_responses(network_id, instance_id, data_id, videoset_id, test=
     unit_df = pd.DataFrame(unit_rel)
     meta_df = make_metadata_df(**key, burnin_frames=burnin_frames).merge(stim_meta_df)
     return resp_array, stim_array, unit_df, meta_df
+
+
+def get_training_dataset(data_id):
+    """
+    Get the training dataset DataFrame for a given data_id.
+    Args:
+        - data_id: ID of the data used for the model.
+    Returns:
+        - dataset_df: DataFrame with the training dataset paths.  
+        - meta_df: DataFrame with metadata.
+    """
+    data_key = {'data_id': data_id}
+    data_rel = Data.VisualScan & data_key
+    dataset = (data.VisualScan & data_rel.fetch1()).compute.dataset
+    meta_df = make_metadata_df(**data_key)
+    return dataset.df, meta_df
+
+
+def get_visual_trial_data(data_id, network_id, instance_id, trial_filterset_id, videoset_id):
+    """"
+    Get the visual trial dataset DataFrame for a given data_id, network_id, instance_id, trial_filterset_id, and videoset_id.
+    Args:
+        - data_id: ID of the data used for the model.
+        - network_id: ID of the network.
+        - instance_id: ID of the model instance.
+        - trial_filterset_id: ID of the trial filter set.
+        - videoset_id: ID of the video set.
+    Returns:
+        - nodel_data: Object with references to the model data
+        - trial_df: DataFrame with the visual trials specified by the trial_filterset_id and videoset_id.
+        - meta_df: DataFrame with metadata.
+    """
+    model_key = dict(
+        data_id=data_id,
+        network_id=network_id,
+        instance_id=instance_id,
+    )
+    data = (Data & model_key).link.compute
+    visual_trial_set_key = dict(
+        trialset_id=data.trialset_id,
+        trial_filterset_id=trial_filterset_id,
+        videoset_id=videoset_id
+    )
+    trial_df = (VisualTrialSet & visual_trial_set_key).df
+    meta_df = make_metadata_df(**model_key, **visual_trial_set_key)
+    return data, trial_df, meta_df
