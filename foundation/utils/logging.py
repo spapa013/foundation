@@ -6,8 +6,8 @@ from functools import wraps
 from contextlib import contextmanager
 
 
-def get_logger():
-    logger = logging.getLogger("foundation")
+def get_logger(name="foundation"):
+    logger = logging.getLogger(name)
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter(
         "%(asctime)-s -- %(levelname)-s -- %(filename)-10s%(lineno)4d:\t %(message)s",
@@ -16,6 +16,7 @@ def get_logger():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
+    logger.propagate = False
     return logger
 
 
