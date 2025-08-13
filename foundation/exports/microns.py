@@ -10,6 +10,7 @@ from pathlib import Path
 from itertools import repeat
 from foundation.exports import utils
 import logging
+from djutils import cache_rowproperty
 
 logger = logging.getLogger(__name__)
 
@@ -271,3 +272,101 @@ def export_properties(target_dir=None, readout=False, performance=False, ori_dir
         np.save(resp_dir / "stimulus.npy", stim_array)  # Save the last stimulus array (they are identical across scans)
 
 
+def export_training_data(data_id, target_dir=None):
+    """
+    Export the training dataset and metadata for a given data_id.
+    
+    Parameters:
+        data_id (str): ID of the data used for the model.
+        target_dir (os.PathLike | None): Directory to save the exported data. If None, uses the current working directory.
+    
+    Returns:
+        tuple: (dataset_df, meta_df) where dataset_df is a DataFrame with the training dataset paths
+               and meta_df is a DataFrame with metadata.
+    """
+    target_dir = Path(target_dir) if target_dir is not None else Path()
+    logger.info(f"Loading training data...")
+    dataset_df, meta_df = utils.get_training_dataset(data_id)
+    
+    logger.info(f"Making destination directory...")
+    dir_name = f'{meta_df["animal_id"].values.item()}_{meta_df["session"].values.item()}_{meta_df["scan_idx"].values.item()}'
+    dst_dir = target_dir / dir_name
+    dst_dir.mkdir(exist_ok=True, parents=True)
+
+    logger.info(f"Exporting training data to {dst_dir}...")
+    for col in dataset_df:
+        col_dir = dst_dir / col
+        col_dir.mkdir(exist_ok=True)
+        for i, value in tqdm(enumerate(dataset_df[col]), desc=col, total=len(dataset_df)):
+            fp = col_dir / f'trial{i}.npy'
+            if hasattr(value, 'fp'):
+                np.save(fp, np.load(value.fp))
+            else:
+                np.save(fp, value)
+    
+    logger.info(f"Saving metadata to {dst_dir / 'metadata.csv'}...")
+    meta_df.to_csv(dst_dir / "metadata.csv", index=False)
+
+
+def export_visual_trial_data(data_id, network_id, instance_id, trial_filterset_id, videoset_id, target_dir=None):
+    target_dir = Path(target_dir) if target_dir is not None else Path()
+    logger.info(f"Loading training data...")
+
+    data, trial_df, meta_df = utils.get_visual_trial_data(
+        data_id=data_id, 
+        network_id=network_id, 
+        instance_id=instance_id, 
+        trial_filterset_id=trial_filterset_id, 
+        videoset_id=videoset_id
+    )
+    logger.info(f"Making destination directory...")
+    dir_name = f'{meta_df["animal_id"].values.item()}_{meta_df["session"].values.item()}_{meta_df["scan_idx"].values.item()}'
+    dst_dir = target_dir / dir_name
+    dst_dir.mkdir(exist_ok=True, parents=True)  
+
+    logger.info(f"Exporting visual trial data to {dst_dir}...")
+    data_type_names = ['stimuli', 'units', 'modulations', 'perspectives']
+    base_dirs = {dtn: dst_dir / dtn for dtn in data_type_names}
+    for bd in base_dirs.values():
+        bd.mkdir(exist_ok=True)
+
+    with cache_rowproperty():
+        for i, (_, vdf) in enumerate(tqdm(trial_df.groupby("video_id"), desc="Videos")):
+            # trial ids
+            trial_ids = list(vdf.trial_id)
+
+            # trial stimuli
+            stimuli = list(data.trial_stimuli(trial_ids))
+            
+            # all of the stimuli should be the same
+            assert all(np.array_equal(s, stimuli[0]) for s in stimuli), (
+                "All trials should have the same stimulus"
+            )
+            
+            # trial units
+            units = list(data.trial_units(trial_ids))
+
+            # trial perspectives
+            perspectives = list(data.trial_perspectives(trial_ids))
+
+            # trial modulations
+            modulations = list(data.trial_modulations(trial_ids))
+
+            assert len(stimuli) == len(trial_ids) == len(units) == len(perspectives) == len(modulations)
+            
+            # save data
+            vid_name = f'video{i}'
+            
+            ## create video directory for each data type
+            vid_dirs = {data_type_names: base_dir / vid_name for data_type_names, base_dir in base_dirs.items()}
+            for vid_dir in vid_dirs.values():
+                vid_dir.mkdir(exist_ok=True)        
+            
+            data_to_save = {dtn: data for dtn, data in zip(data_type_names, [stimuli, units, perspectives, modulations])}
+            for data_type_name, data_type in data_to_save.items():
+                for j, trial_data in enumerate(data_type):
+                    trial_name = f'trial{j}.npy'
+                    np.save(vid_dirs[data_type_name] / trial_name, trial_data)
+    
+    logger.info(f"Saving metadata to {dst_dir / 'metadata.csv'}...")
+    meta_df.to_csv(dst_dir / "metadata.csv", index=False)
