@@ -1,4 +1,5 @@
 from functools import partial
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
@@ -17,6 +18,26 @@ from foundation.recording.compute.visual import VisualTrialSet
 from foundation.utils.logging import tqdm, disable_tqdm
 from fnn.model.utils import isotropic_grid_sample_2d
 from djutils import merge
+from foundation.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
+
+def prepare_target_directory(target_dir=None):
+    """
+    Prepare the target directory for exporting data.
+    
+    Parameters:
+        target_dir (os.PathLike | None): Directory to save the exported data. If None, uses the current working directory.
+    
+    Returns:
+    """
+    logger.info(f"Preparing target directory...")
+    target_dir = Path(target_dir) if target_dir is not None else Path()
+    target_dir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Target directory is: {target_dir}")
+    return target_dir
 
 
 def make_metadata_df(data_id, network_id=None, instance_id=None, **kwargs):
@@ -327,7 +348,7 @@ def get_orientation_direction_tuning(network_id, instance_id, data_id, videoset_
 
 def get_stimulus_videos(data_id, videoset_id):
     """
-    Get stimulus videos for a given model.
+    Get stimulus videos for a given data_id.
     Args:
         - data_id: ID of the data used for the model.
         - videoset_id: ID of the video set.
