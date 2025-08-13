@@ -1,10 +1,13 @@
 services:
   foundation:
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-cajal}/${IMAGE_NAME:-foundation}:${IMAGE_TAG:-latest}
+    build: 
+      context: .
+      dockerfile: Dockerfile
     runtime: nvidia
     env_file: .env
     ports:
-      - "${JUPYTER_HOST:-0.0.0.0}:${JUPYTER_HOST_PORT:-8888}:8888"
+      - "${JUPYTER_HOST:-0.0.0.0}:${JUPYTER_PORT_HOST:-8888}:8888"
     volumes:
       - ..:/workspace/foundation
       - /etc/localtime:/etc/localtime:ro
