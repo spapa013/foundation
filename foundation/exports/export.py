@@ -337,7 +337,7 @@ def export_visual_trial_data(data_id, network_id, instance_id, trial_filterset_i
             data_to_save = {dtn: data for dtn, data in zip(data_type_names, [stimuli, units, perspectives, modulations])}
             for data_type_name, data_type in data_to_save.items():
                 for j, trial_data in enumerate(data_type):
-                    trial_name = f'trial{j}.npy'
+                    trial_name = f'repeat{j}.npy'
                     np.save(vid_dirs[data_type_name] / trial_name, trial_data)
     
     logger.info(f"Saving metadata...")
