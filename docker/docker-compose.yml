@@ -1,19 +1,36 @@
-version: "3"
-
 services:
   foundation:
-    image: at-docker.ad.bcm.edu:5000/foundation:v0
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_NAMESPACE:-cajal}/${IMAGE_NAME:-foundation}:${IMAGE_TAG:-latest}
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    runtime: nvidia
     env_file: .env
+    ports:
+      - "${JUPYTER_HOST:-0.0.0.0}:${JUPYTER_PORT_HOST:-8888}:8888"
     volumes:
+      - ..:/workspace/foundation
       - /etc/localtime:/etc/localtime:ro
-      - /mnt/scratch09/:/mnt/scratch09/
+      - /mnt/:/mnt/
+      - /mnt/scratch09/scratch09/foundation/external/:/external
     entrypoint:
       [
-        "/bin/bash",
-        "-c",
-        "pip install git+https://github.com/cajal/djutils.git@v0.0.1 && \
-         pip install git+https://github.com/cajal/foundation.git && \
-         jupyter lab --NotebookApp.token=$${JUPYTER_TOKEN}"
+        "/bin/bash", "-c",
+        "set -e && \
+         pip install git+https://github.com/cajal/djutils.git@v0.0.1 && \
+         pip install git+https://github.com/cajal/fnn && \
+         pip install -e /workspace/foundation && \
+         jupyter lab \
+           --ip=0.0.0.0 \
+           --port=8888 \
+           --IdentityProvider.token=$$JUPYTER_TOKEN \
+           --ServerApp.allow_root=True \
+           --no-browser"
       ]
-    working_dir: /
+    working_dir: /workspace/foundation/demos
     ipc: host
+    container_name: foundation
+  foundation-cpu:
+    extends: foundation
+    runtime: runc
+    container_name: foundation-cpu
