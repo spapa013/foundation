@@ -58,10 +58,14 @@ ORIDIR_PRECISION_ID = "a647ad04c5e3f6190dd22df2821c9121"
 RESPONSES_VIDEOSET_ID = "e3dd23445aaca70cb9d0d4eb8eea95ce"
 
 
-def export(target_dir=None):
+def export(network_id, instance_id, data_ids, target_dir=None):
     """
     Parameters
     ----------
+    network_id : str
+        network ID
+    instance_id : str
+        instance ID
     target_dir : os.PathLike | None
         target directory
 
@@ -76,14 +80,15 @@ def export(target_dir=None):
     if target_dir is None:
         target_dir = os.getcwd()
 
-    mdir = os.path.join(target_dir, "microns")
+    # mdir = os.path.join(target_dir, "microns")
+    mdir = target_dir
     os.makedirs(mdir, exist_ok=False)
     assert not os.path.exists(f"{mdir}.zip"), f"{mdir}.zip already exists"
 
     dfs = []
     scans = []
 
-    for i, data_id in enumerate(tqdm(DATA_IDS, desc="Scans")):
+    for i, data_id in enumerate(tqdm(data_ids, desc="Scans")):
 
         # scan meta data
         recording = VisualScanRecording & {"data_id": data_id}
@@ -112,8 +117,8 @@ def export(target_dir=None):
         # scan model
         params = Model & {
             "data_id": data_id,
-            "network_id": NETWORK_ID,
-            "instance_id": INSTANCE_ID,
+            "network_id": network_id,
+            "instance_id": instance_id,
         }
         params = params.model().state_dict()
 
