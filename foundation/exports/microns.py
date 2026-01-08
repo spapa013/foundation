@@ -66,6 +66,8 @@ def export(network_id, instance_id, data_ids, target_dir=None):
         network ID
     instance_id : str
         instance ID
+    data_ids : list of str
+        data IDs
     target_dir : os.PathLike | None
         target directory
 
